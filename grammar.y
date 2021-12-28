@@ -3,6 +3,8 @@
 	#include <stdlib.h>
 	#include <string.h>
 	#include <stdarg.h>
+	#include <ctype.h>
+	#include "y.tab.h"
 
 	#define MAXRECST 200
 	#define MAXST 100
@@ -10,6 +12,9 @@
 	#define MAXLEVELS 20
 	#define MAXQUADS 1000
 	
+	
+	extern int yylex();
+	extern char* yytext;
 	extern int yylineno;
 	extern int depth;
 	extern int top();
@@ -17,7 +22,13 @@
 	int currentScope = 1, previousScope = 1;
 	
 	int *arrayScope = NULL;
-	
+
+	void yyerror(const char *msg)
+	{
+		printf("\nSyntax Error at Line %d, Column : %d\n",  yylineno, yylloc.last_column);
+		exit(0);
+	}
+
 	typedef struct record
 	{
 		char *type;
@@ -64,16 +75,17 @@
 	char *argsList = NULL;
 	char *tString = NULL, *lString = NULL;
 	Quad *allQ = NULL;
+	record records[100];
 	node ***Tree = NULL;
 	int *levelIndices = NULL;
 	
 	/*-----------------------------Declarations----------------------------------*/
 	
 	record* findRecord(const char *name, const char *type, int scope);
-  node *createID_Const(char *value, char *type, int scope);
-  int power(int base, int exp);
-  void updateCScope(int scope);
-  void resetDepth();
+  	node *createID_Const(char *value, char *type, int scope);
+  	int power(int base, int exp);
+  	void updateCScope(int scope);
+  	void resetDepth();
 	int scopeBasedTableSearch(int scope);
 	void initNewTable(int scope);
 	void init();
@@ -86,6 +98,7 @@
 	void addToList(char *newVal, int flag);
 	void clearArgsList();
 	int checkIfBinOperator(char *Op);
+	
 	/*------------------------------------------------------------------------------*/
 	
 	void Xitoa(int num, char *str)
@@ -802,22 +815,224 @@
 		return flag;
 	}
 	
+
+	
 	void printQuads()
 	{
 		printf("\n--------------------------------All Quads---------------------------------\n");
 		int i = 0;
+		qIndex;
+		
 		for(i=0; i<qIndex; i++)
 		{
 			if(allQ[i].I > -1)
 				printf("%d\t%s\t%s\t%s\t%s\n", allQ[i].I, allQ[i].Op, allQ[i].A1, allQ[i].A2, allQ[i].R);
 		}
-		printf("--------------------------------------------------------------------------\n");
+		printf("\n--------------------------------------------------------------------------\n");
+		
+	}
+
+	int ContainsLetter(const char* String){
+		//Abort if no string is passed
+		if(String == NULL) return 0;
+	
+		while((*String) != '\0')
+		{
+			if(isalpha(*String)) return 1;
+			String++;
+		}
+		return 0;
+	}
+
+	
+
+	char* check_data_type(char* data){
+		// it's a number
+		
+		if(ContainsLetter(data) == 0){
+			if(strchr(data, '.')){
+				return "double";
+			}
+			else return "int";	
+		}
+		else if(strchr(data, '"')) return "char*";
+		else return "id";
+	}
+
+	char* find_id_data_type(record records[], char* name){
+		int i;
+		for(i=0; i<qIndex; i++){
+			printf("%s-%s\n", records[i].name, records[i].type);
+			if(strcmp(records[i].name, name)){
+				printf("type: %s\n", records[i].type);
+				return records[i].type;
+			}
+		}
+		return NULL;
+	}
+
+	// generate c output code
+	void generateCCode(){
+		FILE *file = fopen("output.c", "w");
+		if (file == NULL){   
+			printf("Error! Could not open file\n"); 
+			exit(-1); // must include stdlib.h 
+		} 
+		fprintf(file, "//Generated C Code, Include The c_code() inside your main.\n"); // write to file
+		// write main
+		fprintf(file, "#include <stdio.h>\n\n");
+		// Declarations
+		fprintf(file, "void c_code();\n");
+		// Main
+		fprintf(file, "int main(){\n");
+		fprintf(file, "\tc_code();\n}");
+		// c_code() Definition
+		printf("\n--------------------------------C-Code---------------------------------\n");
+		fprintf(file, "void c_code(){\n");
+		printf("void c_code(){\n");
+		int i;
+		int id_counter = 0;
+		for(i=0; i<qIndex; i++)
+		{
+			if(allQ[i].I > -1){
+				// right value is an id
+				if(strstr(allQ[i].Op, "goto")){
+
+				}
+				else if(strstr(allQ[i].Op, "Label")){
+
+				}
+				else if(strstr(allQ[i].Op, "If")){
+
+				}
+				// other ops such as "=" 
+				else{
+					// printf("\t%s\t%s\t%s\t%s\n",   allQ[i].Op, allQ[i].A1, allQ[i].A2, allQ[i].R);
+					// if rl has id
+					if(check_data_type(allQ[i].A1) == "id"){
+						// one left value operation
+						if(strchr(allQ[i].A2, '-')){
+							char* type;
+							if(find_id_data_type(records, allQ[i].A1) != NULL){
+								
+								type = find_id_data_type(records, allQ[i].A1);
+								// printf("type: %s\n", type);
+							}
+							// create a record for left id if it is not existed 
+							if(find_id_data_type(records, allQ[i].R)){
+								// reassign the variable
+								fprintf(file, "\t%s %s %s;\n", allQ[i].R, allQ[i].Op, allQ[i].A1);
+								printf("\t%s %s %s;\n", allQ[i].R, allQ[i].Op, allQ[i].A1);
+							}
+							else{
+								record lr;
+								records[id_counter] = lr;
+								lr.name = allQ[i].R;
+								lr.type = type;
+								lr.decLineNo = 0;
+								lr.lastUseLine = 0;
+								// printf("type: %s\n", lr.type);
+								records[id_counter] = lr;
+								id_counter++;
+								// define the variable
+								fprintf(file, "\t%s %s %s %s;\n", type, allQ[i].R, allQ[i].Op, allQ[i].A1);
+								printf("\t%s %s %s %s;\n", type, allQ[i].R, allQ[i].Op, allQ[i].A1);
+							}	
+						}
+						else{
+							char* type;
+							if(find_id_data_type(records, allQ[i].A1)){
+								type = find_id_data_type(records, allQ[i].A1);
+							}
+							// create a record for left id if it is not existed 
+							if(find_id_data_type(records, allQ[i].R)){
+								// reassign the variable
+								fprintf(file, "\t%s = %s %s %s;\n", allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
+								printf("\t%s  = %s %s %s;\n", allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
+							}
+							else{
+								record lr;
+								lr.name = allQ[i].R;
+								lr.type = type;
+								// define the variable
+								fprintf(file, "\t%s %s = %s %s %s;\n", type, allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
+								printf("\t%s %s  = %s %s %s;\n", type, allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
+							}
+						}
+						// fprintf("\t%s\t%s\t%s\t%s\n",   allQ[i].Op, allQ[i].A1, allQ[i].A2, allQ[i].R);
+					}
+					// if rl is a number or a string
+					else {
+						
+						if(strchr(allQ[i].A2, '-')){
+							char* type = check_data_type(allQ[i].A1);
+							// if(find_id_data_type(records, allQ[i].A1) != NULL){
+								
+							// 	type = find_id_data_type(records, allQ[i].A1);
+							// 	printf("type: %s\n", type);
+							// }
+
+							// create a record for left id if it is not existed 
+							if(find_id_data_type(records, allQ[i].R)){
+								// reassign the variable
+								fprintf(file, "\t%s %s %s;\n", allQ[i].R, allQ[i].Op, allQ[i].A1);
+								printf("\t%s %s %s;\n", allQ[i].R, allQ[i].Op, allQ[i].A1);
+							}
+							else{
+								record lr;
+								lr.name = allQ[i].R;
+								lr.type = type;
+								records[id_counter] = lr;
+								id_counter++;
+								
+								// define the variable
+								fprintf(file, "\t%s %s %s %s;\n", type, allQ[i].R, allQ[i].Op, allQ[i].A1);
+								printf("\t%s %s %s %s;\n", type, allQ[i].R, allQ[i].Op, allQ[i].A1);
+							}	
+						}
+						else{
+							char* type;
+							if(find_id_data_type(records, allQ[i].A1)){
+								type = find_id_data_type(records, allQ[i].A1);
+							}
+							// create a record for left id if it is not existed 
+							if(find_id_data_type(records, allQ[i].R)){
+								// reassign the variable
+								fprintf(file, "\t%s = %s %s %s;\n", allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
+								printf("\t%s  = %s %s %s;\n", allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
+							}
+							else{
+								printf("[DEBUG] saving into table");
+								record lr;
+								lr.name = allQ[i].R;
+								lr.type = type;
+								records[id_counter] = lr;
+								id_counter++;
+								printf("type: %s\n", lr.type);
+								// define the variable
+								fprintf(file, "\t%s %s = %s %s %s;\n", type, allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
+								printf("\t%s %s  = %s %s %s;\n", type, allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
+							}
+						}
+					}
+				}
+				
+			}
+				
+		}
+
+
+		fprintf(file, "}\n");
+		fclose(file);
+		printf("}\n");
+		printf("\n--------------------------------------------------------------------------\n");
 	}
 	
 	void freeAll()
 	{
 		deadCodeElimination();
 		printQuads();
+		generateCCode();
 		printf("\n");
 		int i = 0, j = 0;
 		for(i=0; i<=sIndex; i++)
@@ -961,11 +1176,7 @@ func_call : T_ID T_OP call_args T_CP {$$ = createOp("Func_Call", 2, createID_Con
  
 %%
 
-void yyerror(const char *msg)
-{
-	printf("\nSyntax Error at Line %d, Column : %d\n",  yylineno, yylloc.last_column);
-	exit(0);
-}
+
 
 int main()
 {
@@ -973,4 +1184,3 @@ int main()
 	yyparse();
 	return 0;
 }
-
