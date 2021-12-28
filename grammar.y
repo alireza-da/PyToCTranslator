@@ -70,12 +70,13 @@
 	} Quad;
 	
 	STable *symbolTables = NULL;
-	int sIndex = -1, aIndex = -1, tabCount = 0, tIndex = 0 , lIndex = 0, qIndex = 0, nodeCount = 0;
+	int sIndex = -1, aIndex = -1, tabCount = 0, tIndex = 0 , lIndex = 0, qIndex = 0, nodeCount = 0, id_counter = 0;
 	node *rootNode;
 	char *argsList = NULL;
 	char *tString = NULL, *lString = NULL;
 	Quad *allQ = NULL;
-	record records[100];
+	record records[10000];
+	char *labels[10000];
 	node ***Tree = NULL;
 	int *levelIndices = NULL;
 	
@@ -789,7 +790,6 @@
 		int i = 0, j = 0, flag = 1, XF=0;
 		while(flag==1)
 		{
-			
 			flag=0;
 			for(i=0; i<qIndex; i++)
 			{
@@ -848,7 +848,6 @@
 
 	char* check_data_type(char* data){
 		// it's a number
-		
 		if(ContainsLetter(data) == 0){
 			if(strchr(data, '.')){
 				return "double";
@@ -859,12 +858,15 @@
 		else return "id";
 	}
 
-	char* find_id_data_type(record records[], char* name){
-		int i;
-		for(i=0; i<qIndex; i++){
-			printf("%s-%s\n", records[i].name, records[i].type);
-			if(strcmp(records[i].name, name)){
-				printf("type: %s\n", records[i].type);
+	char* find_id_data_type(char* name){
+		int i = 0;
+		if(id_counter == 0){
+			return NULL;
+		}
+		for(i=0; i<id_counter; i++){
+			// printf("%s-%s\n", records[i].name, name);
+			if(!strcmp(records[i].name, name)){
+				// printf("type: %s\n", records[i].type);
 				return records[i].type;
 			}
 		}
@@ -878,32 +880,42 @@
 			printf("Error! Could not open file\n"); 
 			exit(-1); // must include stdlib.h 
 		} 
-		fprintf(file, "//Generated C Code, Include The c_code() inside your main.\n"); // write to file
+		fprintf(file, "//Auto Generated C Code. Call the c_code() function inside your main() Function.\n//It can be included by either linking or defining.\n"); // write to file
 		// write main
 		fprintf(file, "#include <stdio.h>\n\n");
 		// Declarations
 		fprintf(file, "void c_code();\n");
 		// Main
 		fprintf(file, "int main(){\n");
-		fprintf(file, "\tc_code();\n}");
+		fprintf(file, "\tc_code();\n}\n");
 		// c_code() Definition
 		printf("\n--------------------------------C-Code---------------------------------\n");
 		fprintf(file, "void c_code(){\n");
 		printf("void c_code(){\n");
 		int i;
-		int id_counter = 0;
 		for(i=0; i<qIndex; i++)
 		{
+			
 			if(allQ[i].I > -1){
+				
 				// right value is an id
 				if(strstr(allQ[i].Op, "goto")){
-
+					fprintf(file, "\tgoto %s;\n", allQ[i].R);
+					printf("\tgoto %s;\n", allQ[i].R);
 				}
 				else if(strstr(allQ[i].Op, "Label")){
-
+					fprintf(file, "%s:\n",  allQ[i].R);
+					printf("%s:\n",  allQ[i].R);
 				}
 				else if(strstr(allQ[i].Op, "If")){
-
+					if(!strcmp("If False", allQ[i].Op)){
+						fprintf(file, "\tif(!%s){\n\t\tgoto %s;\n\t}\n", allQ[i].A1,  allQ[i].R);
+						printf("\tif(!%s){\n\t\tgoto %s;\n\t}\n", allQ[i].A1,  allQ[i].R);		
+					}
+					else if(!strcmp("If True", allQ[i].Op)){
+						fprintf(file, "\tif(%s){\n\t\tgoto %s;\n\t}\n", allQ[i].A1,  allQ[i].R);
+						printf("\tif(%s){\n\t\tgoto %s;\n\t}\n", allQ[i].A1,  allQ[i].R);		
+					}
 				}
 				// other ops such as "=" 
 				else{
@@ -913,13 +925,13 @@
 						// one left value operation
 						if(strchr(allQ[i].A2, '-')){
 							char* type;
-							if(find_id_data_type(records, allQ[i].A1) != NULL){
+							if(find_id_data_type(allQ[i].A1) != NULL){
 								
-								type = find_id_data_type(records, allQ[i].A1);
+								type = find_id_data_type(allQ[i].A1);
 								// printf("type: %s\n", type);
 							}
 							// create a record for left id if it is not existed 
-							if(find_id_data_type(records, allQ[i].R)){
+							if(find_id_data_type(allQ[i].R)){
 								// reassign the variable
 								fprintf(file, "\t%s %s %s;\n", allQ[i].R, allQ[i].Op, allQ[i].A1);
 								printf("\t%s %s %s;\n", allQ[i].R, allQ[i].Op, allQ[i].A1);
@@ -941,11 +953,11 @@
 						}
 						else{
 							char* type;
-							if(find_id_data_type(records, allQ[i].A1)){
-								type = find_id_data_type(records, allQ[i].A1);
+							if(find_id_data_type(allQ[i].A1)){
+								type = find_id_data_type(allQ[i].A1);
 							}
 							// create a record for left id if it is not existed 
-							if(find_id_data_type(records, allQ[i].R)){
+							if(find_id_data_type(allQ[i].R)){
 								// reassign the variable
 								fprintf(file, "\t%s = %s %s %s;\n", allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
 								printf("\t%s  = %s %s %s;\n", allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
@@ -971,20 +983,23 @@
 							// 	type = find_id_data_type(records, allQ[i].A1);
 							// 	printf("type: %s\n", type);
 							// }
-
 							// create a record for left id if it is not existed 
-							if(find_id_data_type(records, allQ[i].R)){
+							if(find_id_data_type(allQ[i].R) != NULL){
 								// reassign the variable
 								fprintf(file, "\t%s %s %s;\n", allQ[i].R, allQ[i].Op, allQ[i].A1);
 								printf("\t%s %s %s;\n", allQ[i].R, allQ[i].Op, allQ[i].A1);
 							}
 							else{
-								record lr;
-								lr.name = allQ[i].R;
-								lr.type = type;
-								records[id_counter] = lr;
+								// printf("[DEBUG] saving into table\n");
+								// record lr;
+								// lr.name = allQ[i].R;
+								// lr.type = type;
+								// records[id_counter] = lr;
+								records[id_counter].name = (char *)malloc(strlen(allQ[i].R)+1);
+								records[id_counter].type = (char *)malloc(strlen(type)+1);
+								strcpy(records[id_counter].name, allQ[i].R);
+								strcpy(records[id_counter].type, type);
 								id_counter++;
-								
 								// define the variable
 								fprintf(file, "\t%s %s %s %s;\n", type, allQ[i].R, allQ[i].Op, allQ[i].A1);
 								printf("\t%s %s %s %s;\n", type, allQ[i].R, allQ[i].Op, allQ[i].A1);
@@ -992,23 +1007,22 @@
 						}
 						else{
 							char* type;
-							if(find_id_data_type(records, allQ[i].A1)){
-								type = find_id_data_type(records, allQ[i].A1);
+							if(find_id_data_type(allQ[i].A1)){
+								type = find_id_data_type(allQ[i].A1);
 							}
 							// create a record for left id if it is not existed 
-							if(find_id_data_type(records, allQ[i].R)){
+							if(find_id_data_type(allQ[i].R)){
 								// reassign the variable
 								fprintf(file, "\t%s = %s %s %s;\n", allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
 								printf("\t%s  = %s %s %s;\n", allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
 							}
 							else{
-								printf("[DEBUG] saving into table");
+								// printf("[DEBUG] saving into table");
 								record lr;
 								lr.name = allQ[i].R;
 								lr.type = type;
 								records[id_counter] = lr;
 								id_counter++;
-								printf("type: %s\n", lr.type);
 								// define the variable
 								fprintf(file, "\t%s %s = %s %s %s;\n", type, allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
 								printf("\t%s %s  = %s %s %s;\n", type, allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
@@ -1020,7 +1034,6 @@
 			}
 				
 		}
-
 
 		fprintf(file, "}\n");
 		fclose(file);
