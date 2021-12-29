@@ -889,9 +889,9 @@
 			printf("Error! Could not open file\n"); 
 			exit(-1); // must include stdlib.h 
 		} 
-		fprintf(file, "//Auto Generated C Code. Call the c_code() function inside your main() Function.\n//It can be included by either linking or defining.\n"); // write to file
+		fprintf(file, "//Auto Generated C Code. Call the c_code() function inside your main() Function.\n//It can be included by either linking or defining.\n//Include all preprocessors into your code\n"); // write to file
 		// write main
-		fprintf(file, "#include <stdio.h>\n\n");
+		fprintf(file, "#include <stdio.h>\n#define True 1\n#define False 0\n");
 		// Declarations
 		fprintf(file, "void c_code();\n");
 		// Main
@@ -917,8 +917,8 @@
 						labels[label_counter] = (char *)malloc(strlen(allQ[i].R)+1);
 						labels[label_counter] = allQ[i].R;
 						label_counter++;
-						fprintf(file, "%s:\n",  allQ[i].R);
-						printf("%s:\n",  allQ[i].R);
+						fprintf(file, "%s: ;\n",  allQ[i].R);
+						printf("%s: ;\n",  allQ[i].R);
 					}
 					// fprintf(file, "%s:\n",  allQ[i].R);
 					// printf("%s:\n",  allQ[i].R);
@@ -1058,7 +1058,7 @@
 	}
 	
 	void freeAll()
-	{
+	{		
 		deadCodeElimination();
 		printQuads();
 		generateCCode();
