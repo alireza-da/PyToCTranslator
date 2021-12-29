@@ -70,7 +70,7 @@
 	} Quad;
 	
 	STable *symbolTables = NULL;
-	int sIndex = -1, aIndex = -1, tabCount = 0, tIndex = 0 , lIndex = 0, qIndex = 0, nodeCount = 0, id_counter = 0;
+	int sIndex = -1, aIndex = -1, tabCount = 0, tIndex = 0 , lIndex = 0, qIndex = 0, nodeCount = 0, id_counter = 0, label_counter = 0;
 	node *rootNode;
 	char *argsList = NULL;
 	char *tString = NULL, *lString = NULL;
@@ -815,7 +815,6 @@
 		return flag;
 	}
 	
-
 	
 	void printQuads()
 	{
@@ -873,6 +872,16 @@
 		return NULL;
 	}
 
+	int check_label(char *label){
+		int i;
+		for(int i = 0; i < label_counter;i++){
+			if(!strcmp(labels[i], label)){
+				return 0;
+			}
+		}
+		return 1;
+	}
+
 	// generate c output code
 	void generateCCode(){
 		FILE *file = fopen("output.c", "w");
@@ -895,17 +904,24 @@
 		int i;
 		for(i=0; i<qIndex; i++)
 		{
-			
 			if(allQ[i].I > -1){
-				
 				// right value is an id
 				if(strstr(allQ[i].Op, "goto")){
 					fprintf(file, "\tgoto %s;\n", allQ[i].R);
 					printf("\tgoto %s;\n", allQ[i].R);
 				}
+				
 				else if(strstr(allQ[i].Op, "Label")){
-					fprintf(file, "%s:\n",  allQ[i].R);
-					printf("%s:\n",  allQ[i].R);
+					// dead label elimination
+					if(check_label(allQ[i].R)){
+						labels[label_counter] = (char *)malloc(strlen(allQ[i].R)+1);
+						labels[label_counter] = allQ[i].R;
+						label_counter++;
+						fprintf(file, "%s:\n",  allQ[i].R);
+						printf("%s:\n",  allQ[i].R);
+					}
+					// fprintf(file, "%s:\n",  allQ[i].R);
+					// printf("%s:\n",  allQ[i].R);
 				}
 				else if(strstr(allQ[i].Op, "If")){
 					if(!strcmp("If False", allQ[i].Op)){
