@@ -17,6 +17,7 @@
 	extern char* yytext;
 	extern int yylineno;
 	extern int depth;
+	extern int scope_depth;
 	extern int top();
 	extern int pop();
 	int currentScope = 1, previousScope = 1;
@@ -494,6 +495,7 @@
 	
 	void updateCScope(int scope)
 	{
+		printf("currentScope: %d\n", scope);
 		currentScope = scope;
 	}
 	
@@ -518,6 +520,7 @@
 	
 	void initNewTable(int scope)
 	{
+		printf("scope: %d\n", scope);
 		arrayScope[scope]++;
 		sIndex++;
 		symbolTables[sIndex].no = sIndex;
@@ -532,7 +535,7 @@
 	{
 		int i = 0;
 		symbolTables = (STable*)calloc(MAXST, sizeof(STable));
-		arrayScope = (int*)calloc(10, sizeof(int));
+		arrayScope = (int*)calloc(100, sizeof(int));
 		initNewTable(1);
 		argsList = (char *)malloc(100);
 		strcpy(argsList, "");
@@ -1059,6 +1062,7 @@
 	
 	void freeAll()
 	{		
+		printf("\n------------------------After Dead Code Elimination ----------------------\n");
 		deadCodeElimination();
 		printQuads();
 		generateCCode();
@@ -1078,7 +1082,7 @@
 	}
 %}
 
-%union { char *text; int depth; struct ASTNode* node;};
+%union { char *text; int depth; int scope_depth; struct ASTNode* node;};
 %locations
    	  
 %token T_EndOfFile T_Return T_Number T_True T_False T_ID T_Print T_Cln T_NL T_EQL T_NEQ T_EQ T_GT T_LT T_EGT T_ELT T_Or T_And T_Not T_In ID ND DD T_String T_If T_Elif T_While T_Else T_Import T_Break T_Pass T_MN T_PL T_DV T_ML T_OP T_CP T_OB T_CB T_Def T_Comma T_List
@@ -1176,13 +1180,14 @@ else_stmt : T_Else T_Cln start_suite {$$ = createOp("Else", 1, $3);};
 while_stmt : T_While bool_exp T_Cln start_suite {$$ = createOp("While", 2, $2, $4);}; 
 
 start_suite : basic_stmt {$$ = $1;}
-            | T_NL ID {initNewTable($<depth>2); updateCScope($<depth>2);} finalStatements suite {$$ = createOp("BeginBlock", 2, $4, $5);};
+            | T_NL {initNewTable(scope_depth); updateCScope(scope_depth);} finalStatements suite {$$ = createOp("BeginBlock", 2, $3, $4);};
 
-suite : T_NL ND finalStatements suite {$$ = createOp("Next", 2, $3, $4);}
+
+suite : T_NL finalStatements suite {$$ = createOp("Next", 2, $2, $3);}
       | T_NL end_suite {$$ = $2;};
 
-end_suite : DD {updateCScope($<depth>1);} finalStatements {$$ = createOp("EndBlock", 1, $3);} 
-          | DD {updateCScope($<depth>1);} {$$ = createOp("EndBlock", 0);}
+end_suite : T_CB {updateCScope(scope_depth);} finalStatements {$$ = createOp("EndBlock", 1, $3);} 
+          | T_CB {updateCScope(scope_depth);} {$$ = createOp("EndBlock", 0);}
           | {$$ = createOp("EndBlock", 0); resetDepth();};
 
 args : T_ID {addToList($<text>1, 1);} args_list {$$ = createOp(argsList, 0); clearArgsList();} 

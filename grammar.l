@@ -68,6 +68,7 @@
 		return tab_count;
 	}	
  	int depth = 1;
+	int scope_depth = 1;
  		
 %}
 %option yylineno
@@ -76,29 +77,29 @@ Multiline_comment \'\'\'.+\'\'\'
 %%
 
 [\t]*		{
-			depth = indent_depth(yytext);
-//			printf("Depth : %d ",  depth);
-			if(depth < top())
-			{
-				while (depth < top()) pop();
-				yylval.depth = depth;
-				debug("DD");
-				return DD;
-			}
-			
-			if(depth == top())
-			{
-				debug("ND");
-				yylval.depth = depth;
-				return ND;				
-			}
-			if(depth > top())
-			{
-				push(depth);
-				debug("ID");
-				yylval.depth = depth;
-				return ID;
-			}
+// 			depth = indent_depth(yytext);
+// //			printf("Depth : %d ",  depth);
+// 			if(depth < top())
+// 			{
+// 				while (depth < top()) pop();
+// 				yylval.depth = depth;
+// 				debug("DD");
+// 				return DD;
+// 			}
+
+// 			if(depth == top())
+// 			{
+// 				debug("ND");
+// 				yylval.depth = depth;
+// 				return ND;				
+// 			}
+// 			if(depth > top())
+// 			{
+// 				push(depth);
+// 				debug("ID");
+// 				yylval.depth = depth;
+// 				return ID;
+// 			}
 			
 		}
 
@@ -117,6 +118,8 @@ Multiline_comment \'\'\'.+\'\'\'
 "def" {debug("Def"); return T_Def;}
 "return" {debug("Return"); return T_Return;}
 ":" {debug("Cln"); return T_Cln;}
+"{" {debug("OB"); scope_depth++; return T_Cln;}
+"}" {debug("CB"); scope_depth--; return T_CB;}
 ">" {debug("GT"); return T_GT;}
 "<" {debug("LT"); return T_LT;}
 ">=" {debug("EGT"); return T_EGT;}
