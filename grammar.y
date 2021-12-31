@@ -251,6 +251,7 @@
 			int iteration_condition_temp_no = opNode->NextLevel[0]->NextLevel[0]->nodeNo;
 			makeQ(makeStr(iteration_condition_temp_no, 1), "0", "-", "=");
 			printf("%s = T%d\n", opNode->NextLevel[1]->id->name, iteration_condition_temp_no);
+			char *id_name = opNode->NextLevel[1]->id->name;
 			makeQ(opNode->NextLevel[1]->id->name, makeStr(iteration_condition_temp_no, 1), "-", "=");		
 
 			// evaluating boolean expression
@@ -260,6 +261,10 @@
 			printf("If False T%d goto L%d\n", opNode->NextLevel[0]->nodeNo, lIndex+1);		
 			makeQ(makeStr(temp+1, 0), makeStr(opNode->NextLevel[0]->nodeNo, 1), "-", "If False");
 			
+			lIndex+=2;
+			// start suite 			
+			codeGenOp(opNode->NextLevel[3]);
+
 			// increment operation
 			char *X1 = (char*)malloc(10);
 			char *X2 = (char*)malloc(10);
@@ -267,15 +272,12 @@
 			strcpy(X1, makeStr(iteration_condition_temp_no, 1));
 			strcpy(X2, makeStr(iteration_condition_temp_no, 1));
 
-			printf("T%d = T%d %s 1\n", iteration_condition_temp_no, iteration_condition_temp_no, "+");
+			printf("%s = T%d %s 1\n", id_name, iteration_condition_temp_no, "+");
 			makeQ(X1, X2, "1", "+");
 			free(X1);
 			free(X2);
-
-			
-			lIndex+=2;
-			// start suite 			
-			codeGenOp(opNode->NextLevel[3]);
+			printf("%s = T%d\n", id_name, opNode->nodeNo);
+			makeQ( id_name, makeStr(iteration_condition_temp_no, 1), "-", "=");
 
 			// iteration
 			printf("goto L%d\n", temp);
@@ -936,24 +938,13 @@
 					else {
 						
 						if(strchr(allQ[i].A2, '-')){
-							char* type = check_data_type(allQ[i].A1);
-							// if(find_id_data_type(records, allQ[i].A1) != NULL){
-								
-							// 	type = find_id_data_type(records, allQ[i].A1);
-							// 	printf("type: %s\n", type);
-							// }
-							// create a record for left id if it is not existed 
+							char* type = check_data_type(allQ[i].A1);						
 							if(find_id_data_type(allQ[i].R) != NULL){
 								// reassign the variable
 								fprintf(file, "\t%s %s %s;\n", allQ[i].R, allQ[i].Op, allQ[i].A1);
 								printf("\t%s %s %s;\n", allQ[i].R, allQ[i].Op, allQ[i].A1);
 							}
-							else{
-								// printf("[DEBUG] saving into table\n");
-								// record lr;
-								// lr.name = allQ[i].R;
-								// lr.type = type;
-								// records[id_counter] = lr;
+							else{								
 								records[id_counter].name = (char *)malloc(strlen(allQ[i].R)+1);
 								records[id_counter].type = (char *)malloc(strlen(type)+1);
 								strcpy(records[id_counter].name, allQ[i].R);

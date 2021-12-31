@@ -109,7 +109,8 @@ Multiline_comment \'\'\'.+\'\'\'
 "]" {debug("CB"); return T_CB;}
 "," {debug("Comma"); return T_Comma;}
 "=" {debug("EQL"); return T_EQL;}
-[0-9]+ {yylval.text = strdup(yytext); debug(yylval.text); return T_Number;}
+
+-?(([0-9]+)|([0-9]*\.[0-9]+)([eE][-+]?[0-9]+)?) {yylval.text = strdup(yytext); debug(yylval.text); return T_Number;}
 [_a-zA-Z][_a-zA-Z0-9]* {yylval.text = strdup(yytext); debug(yylval.text); return T_ID;}
 "#"([a-z]|[0-9]|[A-Z]|" ")* {}
 {whitespace} {} 
