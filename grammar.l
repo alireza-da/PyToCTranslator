@@ -24,11 +24,11 @@
  		
  		if(strcmp(X, "NL")==0)
  		{
- 			printf("T_%s\n%d ", X, yylineno);
+ 			printf("Token_%s\n%d  ", X, yylineno);
  		}
 		else
 		{
-			printf("T_%s ", X);	
+			printf("Token_%s ", X);	
 		}
  		#endif
  	}
@@ -76,38 +76,12 @@ whitespace [ ]
 Multiline_comment \'\'\'.+\'\'\'
 %%
 
-[\t]*		{
-// 			depth = indent_depth(yytext);
-// //			printf("Depth : %d ",  depth);
-// 			if(depth < top())
-// 			{
-// 				while (depth < top()) pop();
-// 				yylval.depth = depth;
-// 				debug("DD");
-// 				return DD;
-// 			}
-
-// 			if(depth == top())
-// 			{
-// 				debug("ND");
-// 				yylval.depth = depth;
-// 				return ND;				
-// 			}
-// 			if(depth > top())
-// 			{
-// 				push(depth);
-// 				debug("ID");
-// 				yylval.depth = depth;
-// 				return ID;
-// 			}
-			
-		}
-
-"import" {debug("IMPT"); return T_Import;}
+[\t]*		{ }			
 "print"  {debug("Print"); return T_Print;}
-"pass" {debug("Pass"); return T_Pass;}
 "if" {debug("If"); return T_If;}
 "in" {debug("In"); return T_In;}
+"range" {debug("Range"); return T_Range;}
+"for" {debug("For"); return T_For;}
 "while" {debug("While"); return T_While;}
 "break" {debug("Break"); return T_Break;}
 "and" {debug("And"); return T_And;}
@@ -115,9 +89,6 @@ Multiline_comment \'\'\'.+\'\'\'
 "not" {debug("Not"); return T_Not;}
 "elif" {debug("Elif"); return T_Elif;}
 "else" {debug("Else"); return T_Else;}
-"def" {debug("Def"); return T_Def;}
-"return" {debug("Return"); return T_Return;}
-":" {debug("Cln"); return T_Cln;}
 "{" {debug("OB"); scope_depth++; return T_Cln;}
 "}" {debug("CB"); scope_depth--; return T_CB;}
 ">" {debug("GT"); return T_GT;}
@@ -138,11 +109,8 @@ Multiline_comment \'\'\'.+\'\'\'
 "]" {debug("CB"); return T_CB;}
 "," {debug("Comma"); return T_Comma;}
 "=" {debug("EQL"); return T_EQL;}
-"list" {debug("List"); return T_List;}
 [0-9]+ {yylval.text = strdup(yytext); debug(yylval.text); return T_Number;}
 [_a-zA-Z][_a-zA-Z0-9]* {yylval.text = strdup(yytext); debug(yylval.text); return T_ID;}
-\"([^\"\n])*\" {yylval.text = strdup(yytext); debug(yylval.text); return T_String;}
-\'([^\'\n])*\' {yylval.text = strdup(yytext); debug(yylval.text); return T_String;}
 "#"([a-z]|[0-9]|[A-Z]|" ")* {}
 {whitespace} {} 
 "\n" {yycolumn=1; debug("NL"); return T_NL;}
