@@ -229,9 +229,10 @@
 		if(!strcmp(opNode->NType, "While"))
 		{
 			int temp = lIndex;
+			printf("L%d:\n",  lIndex);
+			makeQ(makeStr(temp, 0), "-", "-", "Label");
 			codeGenOp(opNode->NextLevel[0]);
-			printf("L%d: If False T%d goto L%d\n", lIndex, opNode->NextLevel[0]->nodeNo, lIndex+1);
-			makeQ(makeStr(temp, 0), "-", "-", "Label");		
+			printf("If False T%d goto L%d\n", opNode->NextLevel[0]->nodeNo, lIndex+1);		
 			makeQ(makeStr(temp+1, 0), makeStr(opNode->NextLevel[0]->nodeNo, 1), "-", "If False");								
 			lIndex+=2;			
 			codeGenOp(opNode->NextLevel[1]);
@@ -245,24 +246,42 @@
 		if(!strcmp(opNode->NType, "For")){
 			int temp = lIndex;
 
+			// id assigning to zero
 			printf("T%d = 0\n", opNode->nodeNo);
-			makeQ(makeStr(opNode->nodeNo, 1), opNode->id->name, "-", "=");
+			int iteration_condition_temp_no = opNode->NextLevel[0]->NextLevel[0]->nodeNo;
+			makeQ(makeStr(iteration_condition_temp_no, 1), "0", "-", "=");
+			printf("%s = T%d\n", opNode->NextLevel[1]->id->name, iteration_condition_temp_no);
+			makeQ(opNode->NextLevel[1]->id->name, makeStr(iteration_condition_temp_no, 1), "-", "=");		
 
-			printf("%s = T%d\n", opNode->NextLevel[0]->id->name, opNode->NextLevel[1]->nodeNo);
-			makeQ(opNode->NextLevel[0]->id->name, makeStr(opNode->NextLevel[1]->nodeNo, 1), "-", "=");
-
+			// evaluating boolean expression
+			printf("L%d:\n",  lIndex);
+			makeQ(makeStr(temp, 0), "-", "-", "Label");
 			codeGenOp(opNode->NextLevel[0]);
-			printf("L%d: If False T%d goto L%d\n", lIndex, opNode->NextLevel[0]->nodeNo, lIndex+1);
-			makeQ(makeStr(temp, 0), "-", "-", "Label");		
-			makeQ(makeStr(temp+1, 0), makeStr(opNode->NextLevel[0]->nodeNo, 1), "-", "If False");								
-			lIndex+=2;			
+			printf("If False T%d goto L%d\n", opNode->NextLevel[0]->nodeNo, lIndex+1);		
+			makeQ(makeStr(temp+1, 0), makeStr(opNode->NextLevel[0]->nodeNo, 1), "-", "If False");
+			
+			// increment operation
+			char *X1 = (char*)malloc(10);
+			char *X2 = (char*)malloc(10);
+			
+			strcpy(X1, makeStr(iteration_condition_temp_no, 1));
+			strcpy(X2, makeStr(iteration_condition_temp_no, 1));
 
-			printf("T%d = %s\n", opNode->nodeNo, opNode->id->name);
-			makeQ(makeStr(opNode->nodeNo, 1), opNode->id->name, "-", "=");
+			printf("T%d = T%d %s 1\n", iteration_condition_temp_no, iteration_condition_temp_no, "+");
+			makeQ(X1, X2, "1", "+");
+			free(X1);
+			free(X2);
 
-			codeGenOp(opNode->NextLevel[1]);
+			
+			lIndex+=2;
+			// start suite 			
+			codeGenOp(opNode->NextLevel[3]);
+
+			// iteration
 			printf("goto L%d\n", temp);
 			makeQ(makeStr(temp, 0), "-", "-", "goto");
+
+			// end of iteration
 			printf("L%d: ", temp+1);
 			makeQ(makeStr(temp+1, 0), "-", "-", "Label"); 
 			lIndex = lIndex+2;
@@ -416,7 +435,6 @@
 
   node *createOp(char *oper, int noOps, ...)
   {
-  
     va_list params;
     node *newNode;
     int i;
@@ -428,10 +446,13 @@
     strcpy(newNode->NType, oper);
     newNode->noOps = noOps;
     va_start(params, noOps);
-    
     for (i = 0; i < noOps; i++)
-      newNode->NextLevel[i] = va_arg(params, node*);
-    
+    	newNode->NextLevel[i] = va_arg(params, node*);
+		if(newNode->NextLevel[i]){
+			printf("\n node type: %d\n", newNode->NextLevel[i]->noOps);
+		}
+			
+		
     va_end(params);
     newNode->nodeNo = nodeCount++;
     return newNode;
@@ -789,7 +810,14 @@
 		}
 		return 1;
 	}
-
+	int find_index_of_condition(char* lv_name){
+		for(int i=0; i<qIndex; i++){
+			if(!strcmp(lv_name, allQ[i].R)){
+				return i;
+			}
+		}
+		return -1;
+	}
 	// generate c output code
 	void generateCCode(){
 		FILE *file = fopen("output.c", "w");
@@ -833,6 +861,13 @@
 				}
 				else if(strstr(allQ[i].Op, "If")){
 					if(!strcmp("If False", allQ[i].Op)){
+						// if(find_index_of_condition(allQ[i].A1)){
+						// 	int idx = find_index_of_condition(allQ[i].A1);
+						// 	// fprintf(file, "\t%s %s %s;\n", allQ[idx].A1, allQ[idx].Op, allQ[idx].A2);
+						// 	// printf("\t%s %s %s;\n", allQ[idx].A1, allQ[idx].Op, allQ[idx].A2);
+						// 	fprintf(file, "\tif(!(%s %s %s)){\n\t\tgoto %s;\n\t}\n", allQ[idx].A1, allQ[idx].Op, allQ[idx].A2,  allQ[i].R);
+						// 	printf("\tif(!(%s %s %s)){\n\t\tgoto %s;\n\t}\n", allQ[idx].A1, allQ[idx].Op, allQ[idx].A2,  allQ[i].R);
+						// }
 						fprintf(file, "\tif(!%s){\n\t\tgoto %s;\n\t}\n", allQ[i].A1,  allQ[i].R);
 						printf("\tif(!%s){\n\t\tgoto %s;\n\t}\n", allQ[i].A1,  allQ[i].R);		
 					}
@@ -990,7 +1025,7 @@
 %union { char *text; int depth; int scope_depth; struct ASTNode* node;};
 %locations
    	  
-%token T_EndOfFile T_Return T_Number T_True T_False T_ID T_Print T_Cln T_NL T_EQL T_NEQ T_EQ T_GT T_LT T_EGT T_ELT T_Or T_And T_Not T_In ID ND DD T_String T_If T_Elif T_While T_Else T_Break T_MN T_PL T_DV T_ML T_OP T_CP T_OB T_CB T_Def T_Comma T_List
+%token T_EndOfFile T_Return T_Number T_True T_False T_ID T_Print T_Range T_Cln T_NL T_EQL T_NEQ T_EQ T_GT T_LT T_EGT T_ELT T_Or T_And T_Not T_In ID ND DD T_String T_If T_Elif T_While T_For T_Else T_Break T_MN T_PL T_DV T_ML T_OP T_CP T_OB T_CB T_Def T_Comma T_List
 
 %right T_EQL                                          
 %left T_PL T_MN
@@ -1003,7 +1038,8 @@
 
 %%
 
-StartDebugger : {init();} StartParse T_EndOfFile {printf("\nValid Python Syntax\n");  printAST($2); codeGenOp($2); printQuads(); printSTable(); freeAll(); exit(0);} ;
+StartDebugger : {init();} StartParse T_EndOfFile {printf("\nValid Python Syntax\n"); printAST($2);
+ 				codeGenOp($2); printQuads(); printSTable(); freeAll(); exit(0);} ;
 
 constant : T_Number {insertRecord("Constant", $<text>1, @1.first_line, currentScope); $$ = createID_Const("Constant", $<text>1, currentScope);}
 
@@ -1058,6 +1094,7 @@ finalStatements : basic_stmt {$$ = $1;}
 
 cmpd_stmt : if_stmt {$$ = $1;}
           | while_stmt {$$ = $1;};
+		  | for_stmt {$$ = $1;}
 
 
 if_stmt : T_If bool_exp T_Cln start_suite {$$ = createOp("If", 2, $2, $4);}
@@ -1074,7 +1111,11 @@ myrange : term
         | term T_Comma term
         | term T_Comma term T_Comma term
 
-for_stmt : T_For T_ID T_In T_Range T_OP myrange T_CP T_Cln start_suite {$$ = createOp("For", 3, $2, $6, $10);};
+for_stmt : T_For T_ID T_In T_Range T_OP myrange T_CP T_Cln start_suite {node* bool_node;bool_node=(node*)calloc(1, sizeof(node));
+																		insertRecord("Identifier", $<text>2, @1.first_line, currentScope);
+																		node* id = createID_Const("Identifier", $<text>2, currentScope);
+																		bool_node=createOp("<", 2, id, $6);
+																		$$ = createOp("For", 4, createOp("<", 2, id, $6), id, $6, $9);}
 
 start_suite : basic_stmt {$$ = $1;}
             | T_NL {initNewTable(scope_depth); updateCScope(scope_depth);} finalStatements suite {$$ = createOp("BeginBlock", 2, $3, $4);};
