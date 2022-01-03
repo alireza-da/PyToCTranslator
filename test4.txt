@@ -1,0 +1,18 @@
+#combination of all tests
+flag=True
+num = 0.02
+i=0
+j = (i - 1) * 2
+while(i<10){
+    if( flag == True ){
+        if(i > 2){
+            j = (i*2)/ i - 4
+        }else{
+            i = i - 1
+        }
+    }
+    j = num*j
+}
+for j in range(10){
+    i=i/(2*j)
+}

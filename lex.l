@@ -1,4 +1,6 @@
 %{
+	#include <stdlib.h>
+	#include <stdio.h>
 	#include <string.h>
 	#include "y.tab.h"
 	#define stack_size 100
@@ -12,23 +14,25 @@
     yycolumn += yyleng;												
     
  	static int sp=0, stack [stack_size];
- 	
- 	static void debug(const char *X)
- 	{
+ 	static void debug(const char *s){
  		#ifdef DEBUG
- 		if(startFlag)
- 		{
- 			printf("---------------------------------Token Sequence--------------------------\n1 ");
+		fflush(stdin);
+ 
+		 
+ 		if(startFlag){
+ 			printf("------------------------TOKENS--------------------------\n");
  			startFlag=0;
  		}
- 		
- 		if(strcmp(X, "NL")==0)
- 		{
- 			printf("Token_%s\n%d  ", X, yylineno);
+		int res= strcmp(s, "NL");
+		int temp=yylineno;
+ 		if(res==0){
+			printf("\nline: %d ",temp);
+ 			printf("NEWLINE ");
+			fflush(stdout);
+
  		}
-		else
-		{
-			printf("Token_%s ", X);	
+		else{
+			printf("Token_%s ", s);	
 		}
  		#endif
  	}
@@ -55,12 +59,10 @@
 		int len = strlen(K), i, tab_count=1;
 		for(i=0; i< len ; i++)
 		{
-			if(K[i]=='\t')
-			{
+			if(K[i]=='\t'){
 				tab_count++;
 			}
-			else
-			{
+			else{
 				printf("Nope");
 				break;
 			}	
@@ -76,7 +78,7 @@ whitespace [ ]
 Multiline_comment \'\'\'.+\'\'\'
 %%
 
-[\t]*		{ }			
+[\t" "]*		{ }			
 "print"  {debug("Print"); return T_Print;}
 "if" {debug("If"); return T_If;}
 "in" {debug("In"); return T_In;}
@@ -113,7 +115,6 @@ Multiline_comment \'\'\'.+\'\'\'
 -?(([0-9]+)|([0-9]*\.[0-9]+)([eE][-+]?[0-9]+)?) {yylval.text = strdup(yytext); debug(yylval.text); return T_Number;}
 [_a-zA-Z][_a-zA-Z0-9]* {yylval.text = strdup(yytext); debug(yylval.text); return T_ID;}
 "#"([a-z]|[0-9]|[A-Z]|" ")* {}
-{whitespace} {} 
 "\n" {yycolumn=1; debug("NL"); return T_NL;}
 <<EOF>> {debug("EOF"); return T_EndOfFile;}
 

@@ -165,8 +165,7 @@
 			}
 	}
 	
-	void codeGenOp(node *opNode)
-	{
+	void codeGenOp(node *opNode){
 		if(opNode == NULL)
 		{
 			return;
@@ -450,10 +449,6 @@
     va_start(params, noOps);
     for (i = 0; i < noOps; i++)
     	newNode->NextLevel[i] = va_arg(params, node*);
-		if(newNode->NextLevel[i]){
-			printf("\n node type: %d\n", newNode->NextLevel[i]->noOps);
-		}
-			
 		
     va_end(params);
     newNode->nodeNo = nodeCount++;
@@ -627,17 +622,22 @@
 	{
 		int i = 0, j = 0;
 		
-		printf("\n----------------------------All Symbol Tables----------------------------");
-		printf("\nScope\tName\tType\t\tDeclaration\tLast Used Line\n");
+		printf("\n------------------------Symbol Tables---------------------------");
+		printf("\nScope\tName/Value\tType\t\tDeclaration\tLast Used Line\n");
 		for(i=0; i<=sIndex; i++)
 		{
 			for(j=0; j<symbolTables[i].noOfElems; j++)
-			{
-				printf("(%d, %d)\t%s\t%s\t%d\t\t%d\n", symbolTables[i].Parent, symbolTables[i].scope, symbolTables[i].Elements[j].name, symbolTables[i].Elements[j].type, symbolTables[i].Elements[j].decLineNo,  symbolTables[i].Elements[j].lastUseLine);
+			{	
+				if(!strcmp(symbolTables[i].Elements[j].type,"ICGTempLabel"))
+					printf("%d\t%s\t\t%s\t\n", symbolTables[i].scope, symbolTables[i].Elements[j].name, "Label");
+				else if(!strcmp(symbolTables[i].Elements[j].type,"ICGTempVar"))
+					printf("%d\t%s\t\t%s\t\n", symbolTables[i].scope, symbolTables[i].Elements[j].name, "Temp");	
+				else
+					printf("%d\t%s\t\t%s\t\t%d\t\t%d\n", symbolTables[i].scope, symbolTables[i].Elements[j].name, symbolTables[i].Elements[j].type, symbolTables[i].Elements[j].decLineNo,  symbolTables[i].Elements[j].lastUseLine);
 			}
 		}
 		
-		printf("-------------------------------------------------------------------------\n");
+		printf("-------------------------------------------------------------------\n");
 		
 	}
 	
@@ -668,7 +668,7 @@
 	
 	void printAST(node *root)
 	{
-		printf("\n-------------------------Abstract Syntax Tree--------------------------\n");
+		printf("\n-----------------------Syntax Tree--------------------------\n");
 		ASTToArray(root, 0);
 		int j = 0, p, q, maxLevel = 0, lCount = 0;
 		
@@ -747,16 +747,19 @@
 	}
 	
 	
-	void printQuads()
-	{
-		printf("\n--------------------------------All Quads---------------------------------\n");
+	void printQuads(){
+		printf("\n------------------------Three-address code---------------------------\n");
 		int i = 0;
 		qIndex;
 		
 		for(i=0; i<qIndex; i++)
 		{
-			if(allQ[i].I > -1)
-				printf("%d\t%s\t%s\t%s\t%s\n", allQ[i].I, allQ[i].Op, allQ[i].A1, allQ[i].A2, allQ[i].R);
+			if(allQ[i].I > -1){
+				if(!strcmp(allQ[i].A2 ,"-")){
+					printf("%d\t%s\t%s\t%s\n", allQ[i].I,allQ[i].R,  allQ[i].Op, allQ[i].A1);
+				}else	
+				printf("%d\t%s\t%s\t%s\t%s\n", allQ[i].I,allQ[i].R,  allQ[i].Op, allQ[i].A1,  allQ[i].A2);
+			}
 		}
 		printf("\n--------------------------------------------------------------------------\n");
 		
@@ -785,6 +788,8 @@
 			else return "int";	
 		}
 		else if(strchr(data, '"')) return "char*";
+		else if(!strcmp(data,"True")) return "int";
+		else if(!strcmp(data,"False")) return "int";
 		else return "id";
 	}
 
@@ -927,6 +932,8 @@
 								record lr;
 								lr.name = allQ[i].R;
 								lr.type = type;
+								records[id_counter] = lr;
+								id_counter++;
 								// define the variable
 								fprintf(file, "\t%s %s = %s %s %s;\n", type, allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
 								printf("\t%s %s  = %s %s %s;\n", type, allQ[i].R, allQ[i].A1, allQ[i].Op, allQ[i].A2);
@@ -993,7 +1000,7 @@
 	
 	void freeAll()
 	{		
-		printf("\n------------------------After Dead Code Elimination ----------------------\n");
+		printf("Remove Unused Variables");
 		deadCodeElimination();
 		printQuads();
 		generateCCode();
@@ -1030,7 +1037,8 @@
 %%
 
 StartDebugger : {init();} StartParse T_EndOfFile {printf("\nValid Python Syntax\n"); printAST($2);
- 				codeGenOp($2); printQuads(); printSTable(); freeAll(); exit(0);} ;
+				printf("\n-------------Three-address code---------------\n");
+ 				codeGenOp($2); printSTable(); freeAll(); exit(0);} ;
 
 constant : T_Number {insertRecord("Constant", $<text>1, @1.first_line, currentScope); $$ = createID_Const("Constant", $<text>1, currentScope);}
 
@@ -1066,6 +1074,7 @@ bool_exp : bool_term T_Or bool_term {$$ = createOp("or", 2, $1, $3);}
 
 bool_term : bool_factor {$$ = $1;}
           | arith_exp T_EQ arith_exp {$$ = createOp("==", 2, $1, $3);}
+		  | arith_exp T_EQ bool_term {$$ = createOp("==", 2, $1, $3);}
           | T_True {insertRecord("Constant", "True", @1.first_line, currentScope); $$ = createID_Const("Constant", "True", currentScope);}
           | T_False {insertRecord("Constant", "False", @1.first_line, currentScope); $$ = createID_Const("Constant", "False", currentScope);}; 
           

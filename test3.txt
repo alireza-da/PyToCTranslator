@@ -1,0 +1,11 @@
+#while and for testing
+
+num = 0.3
+i = 0
+j = (i - 1) * 2
+while(i<10){
+    num = num *2
+}
+for j in range(10){
+    i=i/(2*j)
+}

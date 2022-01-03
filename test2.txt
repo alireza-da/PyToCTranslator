@@ -1,0 +1,10 @@
+#testing if else constructs
+i = 0
+c = 23
+if(i == 3){
+    i = 2
+}elif(c == 23){
+    c = 0
+}else{
+    i=0
+}

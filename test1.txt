@@ -1,0 +1,8 @@
+#testing assignments and expressions
+
+a = (2*5)/(1+1)
+b = a * a + 1
+
+if(b == 1){
+    a=a+1
+}
